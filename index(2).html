@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VideoDrop — حمّل فيديوهاتك بسهولة</title>
+<meta name="description" content="أداة احترافية لتحليل روابط الفيديو من يوتيوب وانستقرام وتيك توك واختيار جودة التنزيل المناسبة.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   0. DESIGN TOKENS
+   ============================================================ */
+:root{
+  --bg-0:#08080d;
+  --bg-1:#0d0d16;
+  --bg-2:#13131f;
+  --surface:#15151f;
+  --surface-2:#1b1b28;
+  --border:rgba(255,255,255,0.08);
+  --border-strong:rgba(255,255,255,0.14);
+
+  --text-1:#f3f3f8;
+  --text-2:#a8a8bd;
+  --text-3:#6f6f85;
+
+  --violet:#7c6cf0;
+  --violet-2:#5b4fd1;
+  --blue:#4f8cff;
+  --cyan:#4fd1ff;
+
+  --grad-brand: linear-gradient(135deg, var(--blue) 0%, var(--violet) 100%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(79,140,255,0.18) 0%, rgba(124,108,240,0.18) 100%);
+
+  --success:#3ddc97;
+  --danger:#ff6470;
+  --warning:#ffb547;
+
+  --radius-sm:10px;
+  --radius-md:16px;
+  --radius-lg:24px;
+  --radius-full:999px;
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-2: 0 10px 30px -10px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 0 1px rgba(124,108,240,0.25), 0 20px 60px -20px rgba(79,140,255,0.35);
+
+  --header-h: 76px;
+  --ease: cubic-bezier(.22,.9,.32,1);
+}
+
+html[data-theme="light"]{
+  --bg-0:#f4f5fa;
+  --bg-1:#eef0f7;
+  --bg-2:#e7e9f2;
+  --surface:#ffffff;
+  --surface-2:#f3f4fa;
+  --border:rgba(20,20,40,0.08);
+  --border-strong:rgba(20,20,40,0.14);
+
+  --text-1:#15151f;
+  --text-2:#53536b;
+  --text-3:#8686a0;
+
+  --shadow-1: 0 1px 2px rgba(20,20,50,0.06);
+  --shadow-2: 0 10px 30px -12px rgba(20,20,50,0.18);
+  --shadow-glow: 0 0 0 1px rgba(124,108,240,0.18), 0 20px 60px -20px rgba(79,140,255,0.25);
+}
+
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{
+  margin:0;
+  background:var(--bg-0);
+  color:var(--text-1);
+  font-family:'Cairo', 'Segoe UI', sans-serif;
+  overflow-x:hidden;
+  transition:background .35s var(--ease), color .35s var(--ease);
+  -webkit-font-smoothing:antialiased;
+}
+img,svg{ display:block; max-width:100%; }
+a{ color:inherit; text-decoration:none; }
+button{ font-family:inherit; cursor:pointer; }
+input{ font-family:inherit; }
+ul{ margin:0; padding:0; list-style:none; }
+::selection{ background:var(--violet); color:#fff; }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
+}
+
+.container{
+  max-width:1180px;
+  margin:0 auto;
+  padding:0 24px;
+}
+
+/* ============================================================
+   1. AMBIENT BACKGROUND — soft moving blur shapes (signature)
+   ============================================================ */
+.ambient{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+.ambient span{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(90px);
+  opacity:.35;
+  will-change:transform;
+}
+html[data-theme="light"] .ambient span{ opacity:.28; }
+.ambient .b1{ width:520px; height:520px; top:-140px; right:-120px; background:var(--blue); animation:drift1 22s ease-in-out infinite; }
+.ambient .b2{ width:460px; height:460px; bottom:-160px; left:-100px; background:var(--violet); animation:drift2 26s ease-in-out infinite; }
+.ambient .b3{ width:340px; height:340px; top:38%; left:48%; background:var(--cyan); opacity:.18; animation:drift3 30s ease-in-out infinite; }
+
+@keyframes drift1{
+  0%,100%{ transform:translate(0,0) scale(1); }
+  50%{ transform:translate(-60px,60px) scale(1.08); }
+}
+@keyframes drift2{
+  0%,100%{ transform:translate(0,0) scale(1); }
+  50%{ transform:translate(50px,-40px) scale(1.1); }
+}
+@keyframes drift3{
+  0%,100%{ transform:translate(-50%,-50%) scale(1); }
+  50%{ transform:translate(-45%,-55%) scale(1.15); }
+}
+
+/* ============================================================
+   2. HEADER
+   ============================================================ */
+header.site-header{
+  position:fixed;
+  top:0; right:0; left:0;
+  height:var(--header-h);
+  z-index:100;
+  display:flex;
+  align-items:center;
+  background:rgba(13,13,22,0.55);
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  border-bottom:1px solid var(--border);
+  transition:background .35s var(--ease), border-color .35s var(--ease);
+}
+html[data-theme="light"] header.site-header{
+  background:rgba(255,255,255,0.6);
+}
+.header-inner{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:800;
+  font-size:19px;
+  letter-spacing:.2px;
+}
+.brand .logo-mark{
+  width:38px; height:38px;
+  border-radius:11px;
+  background:var(--grad-brand);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 6px 18px -6px rgba(79,140,255,.55);
+}
+.brand .logo-mark svg{ width:20px; height:20px; }
+
+nav.main-nav{ display:flex; align-items:center; gap:8px; }
+nav.main-nav a{
+  padding:10px 14px;
+  border-radius:var(--radius-full);
+  font-size:14.5px;
+  font-weight:600;
+  color:var(--text-2);
+  transition:color .2s var(--ease), background .2s var(--ease);
+}
+nav.main-nav a:hover{ color:var(--text-1); background:var(--surface-2); }
+
+.header-actions{ display:flex; align-items:center; gap:8px; }
+.icon-btn{
+  width:42px; height:42px;
+  border-radius:var(--radius-full);
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text-2);
+  display:flex; align-items:center; justify-content:center;
+  transition:all .2s var(--ease);
+}
+.icon-btn:hover{ color:var(--text-1); border-color:var(--border-strong); transform:translateY(-1px); }
+.icon-btn svg{ width:19px; height:19px; }
+.lang-btn{
+  width:auto; padding:0 14px; gap:6px; font-weight:700; font-size:13px;
+}
+
+.nav-toggle{ display:none; }
+
+/* ============================================================
+   3. HERO
+   ============================================================ */
+main{ position:relative; z-index:1; }
+.hero{
+  padding:calc(var(--header-h) + 76px) 0 60px;
+  text-align:center;
+}
+.eyebrow{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 16px;
+  border-radius:var(--radius-full);
+  border:1px solid var(--border-strong);
+  background:var(--grad-brand-soft);
+  font-size:13px;
+  font-weight:700;
+  color:var(--text-1);
+  margin-bottom:26px;
+}
+.eyebrow span.dot{
+  width:7px; height:7px; border-radius:50%;
+  background:var(--success);
+  box-shadow:0 0 0 3px rgba(61,220,151,0.18);
+}
+h1.hero-title{
+  font-size:clamp(32px, 5.4vw, 58px);
+  font-weight:900;
+  line-height:1.18;
+  margin:0 0 20px;
+  letter-spacing:-.5px;
+}
+h1.hero-title .grad{
+  background:var(--grad-brand);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+.hero-sub{
+  max-width:620px;
+  margin:0 auto 44px;
+  color:var(--text-2);
+  font-size:clamp(15px,1.8vw,18px);
+  line-height:1.8;
+  font-weight:500;
+}
+
+/* download box */
+.download-card{
+  max-width:760px;
+  margin:0 auto;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:28px;
+  box-shadow:var(--shadow-glow);
+  position:relative;
+}
+.input-row{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  padding:6px 6px 6px 6px;
+  transition:border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.input-row:focus-within{
+  border-color:var(--violet);
+  box-shadow:0 0 0 4px rgba(124,108,240,0.15);
+}
+.input-row .link-icon{
+  width:22px; height:22px;
+  color:var(--text-3);
+  flex:0 0 auto;
+  margin-inline-start:10px;
+}
+.input-row input{
+  flex:1;
+  border:none;
+  outline:none;
+  background:transparent;
+  color:var(--text-1);
+  font-size:15.5px;
+  padding:14px 4px;
+  font-weight:600;
+  min-width:0;
+}
+.input-row input::placeholder{ color:var(--text-3); font-weight:500; }
+.paste-btn{
+  flex:0 0 auto;
+  border:1px solid var(--border-strong);
+  background:var(--surface);
+  color:var(--text-1);
+  font-size:13.5px;
+  font-weight:700;
+  padding:10px 16px;
+  border-radius:var(--radius-sm);
+  transition:all .2s var(--ease);
+  white-space:nowrap;
+}
+.paste-btn:hover{ background:var(--surface-2); }
+
+.analyze-btn{
+  width:100%;
+  margin-top:14px;
+  border:none;
+  border-radius:var(--radius-md);
+  background:var(--grad-brand);
+  color:#fff;
+  font-size:16.5px;
+  font-weight:800;
+  padding:17px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  box-shadow:0 14px 30px -10px rgba(79,140,255,.55);
+  transition:transform .2s var(--ease), box-shadow .2s var(--ease), opacity .2s;
+  position:relative;
+  overflow:hidden;
+}
+.analyze-btn:hover{ transform:translateY(-2px); box-shadow:0 18px 36px -8px rgba(79,140,255,.65); }
+.analyze-btn:active{ transform:translateY(0); }
+.analyze-btn[disabled]{ opacity:.75; cursor:progress; transform:none; }
+.analyze-btn .spinner{
+  width:19px; height:19px;
+  border-radius:50%;
+  border:2.5px solid rgba(255,255,255,.35);
+  border-top-color:#fff;
+  animation:spin .7s linear infinite;
+  display:none;
+}
+.analyze-btn.loading .spinner{ display:inline-block; }
+.analyze-btn.loading .btn-label{ opacity:.85; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+.inline-hint{
+  margin-top:12px;
+  font-size:13px;
+  color:var(--text-3);
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-height:18px;
+}
+.inline-hint.error{ color:var(--danger); font-weight:700; }
+.inline-hint svg{ width:15px; height:15px; flex:0 0 auto; }
+
+/* platform detect chips */
+.platform-row{
+  display:flex;
+  justify-content:center;
+  gap:12px;
+  margin-top:26px;
+  flex-wrap:wrap;
+}
+.platform-chip{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:11px 18px;
+  border-radius:var(--radius-full);
+  border:1px solid var(--border);
+  background:var(--surface);
+  font-size:14px;
+  font-weight:700;
+  color:var(--text-2);
+  transition:all .25s var(--ease);
+  cursor:default;
+}
+.platform-chip svg{ width:19px; height:19px; }
+.platform-chip:hover{ border-color:var(--border-strong); color:var(--text-1); }
+.platform-chip.active{
+  color:var(--text-1);
+  border-color:transparent;
+  background:var(--grad-brand-soft);
+  box-shadow:0 0 0 1.5px rgba(124,108,240,.5) inset;
+}
+.platform-chip.active .pulse{
+  width:7px; height:7px; border-radius:50%; background:var(--success);
+  box-shadow:0 0 0 3px rgba(61,220,151,.2);
+  margin-inline-start:2px;
+}
+
+/* ============================================================
+   4. TOASTS
+   ============================================================ */
+.toast-wrap{
+  position:fixed;
+  top:calc(var(--header-h) + 16px);
+  left:50%;
+  transform:translateX(-50%);
+  z-index:400;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  width:min(92vw, 420px);
+  pointer-events:none;
+}
+.toast{
+  pointer-events:auto;
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  background:var(--surface);
+  border:1px solid var(--border-strong);
+  border-radius:var(--radius-md);
+  padding:14px 16px;
+  box-shadow:var(--shadow-2);
+  animation:toastIn .35s var(--ease);
+}
+@keyframes toastIn{ from{ opacity:0; transform:translateY(-12px) scale(.97);} to{ opacity:1; transform:none; } }
+.toast .toast-icon{
+  width:22px; height:22px; flex:0 0 auto; margin-top:1px;
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+}
+.toast .toast-icon svg{ width:14px; height:14px; }
+.toast.success .toast-icon{ background:rgba(61,220,151,.15); color:var(--success); }
+.toast.error .toast-icon{ background:rgba(255,100,112,.15); color:var(--danger); }
+.toast.warning .toast-icon{ background:rgba(255,181,71,.15); color:var(--warning); }
+.toast .toast-text{ font-size:14px; font-weight:600; color:var(--text-1); line-height:1.6; }
+.toast .toast-close{
+  margin-inline-start:auto;
+  background:none; border:none; color:var(--text-3);
+  width:20px; height:20px; flex:0 0 auto;
+}
+.toast .toast-close svg{ width:14px; height:14px; }
+
+/* ============================================================
+   5. RESULTS SECTION
+   ============================================================ */
+.results{
+  max-width:840px;
+  margin:34px auto 0;
+  display:none;
+}
+.results.visible{ display:block; animation:fadeUp .45s var(--ease); }
+@keyframes fadeUp{ from{ opacity:0; transform:translateY(14px);} to{ opacity:1; transform:none; } }
+
+.video-card{
+  display:flex;
+  gap:18px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:18px;
+  text-align:right;
+  align-items:center;
+}
+.video-thumb{
+  width:132px; height:96px;
+  border-radius:var(--radius-sm);
+  background:var(--surface-2);
+  flex:0 0 auto;
+  overflow:hidden;
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text-3);
+}
+.video-thumb svg{ width:30px; height:30px; }
+.video-thumb .duration-badge{
+  position:absolute; bottom:6px; left:6px;
+  background:rgba(0,0,0,.65);
+  color:#fff;
+  font-size:11px;
+  font-weight:700;
+  padding:2px 7px;
+  border-radius:6px;
+}
+.video-meta{ min-width:0; flex:1; }
+.video-meta h3{
+  margin:0 0 6px;
+  font-size:16.5px;
+  font-weight:800;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.video-meta .video-sub{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--text-2);
+  font-size:13.5px;
+  font-weight:600;
+  flex-wrap:wrap;
+}
+.video-meta .video-sub .platform-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:3px 9px;
+  border-radius:var(--radius-full);
+  background:var(--surface-2);
+  font-size:12px;
+  font-weight:700;
+}
+.video-meta .video-sub .platform-tag svg{ width:13px; height:13px; }
+
+.quality-groups{ margin-top:22px; display:flex; flex-direction:column; gap:16px; }
+.quality-group h4{
+  font-size:13px;
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  color:var(--text-3);
+  font-weight:800;
+  margin:0 0 10px;
+}
+.quality-list{ display:flex; flex-direction:column; gap:10px; }
+.quality-item{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  padding:14px 16px;
+  transition:border-color .2s var(--ease);
+}
+.quality-item:hover{ border-color:var(--border-strong); }
+.quality-item .q-badge{
+  width:46px; height:46px;
+  border-radius:12px;
+  background:var(--grad-brand-soft);
+  display:flex; align-items:center; justify-content:center;
+  font-size:11.5px;
+  font-weight:900;
+  color:var(--text-1);
+  flex:0 0 auto;
+}
+.quality-item .q-info{ flex:1; min-width:0; }
+.quality-item .q-info .q-res{ font-weight:800; font-size:15px; }
+.quality-item .q-info .q-meta{ font-size:12.5px; color:var(--text-3); font-weight:600; margin-top:2px; }
+.dl-btn{
+  flex:0 0 auto;
+  display:flex; align-items:center; gap:7px;
+  border:1px solid var(--border-strong);
+  background:var(--surface-2);
+  color:var(--text-1);
+  font-weight:700;
+  font-size:13.5px;
+  padding:10px 16px;
+  border-radius:var(--radius-sm);
+  transition:all .2s var(--ease);
+}
+.dl-btn svg{ width:16px; height:16px; }
+.dl-btn:hover{ background:var(--grad-brand); border-color:transparent; color:#fff; transform:translateY(-1px); }
+
+.results-note{
+  margin-top:18px;
+  font-size:12.5px;
+  color:var(--text-3);
+  display:flex;
+  gap:8px;
+  background:var(--surface);
+  border:1px dashed var(--border-strong);
+  border-radius:var(--radius-sm);
+  padding:12px 14px;
+  line-height:1.8;
+}
+.results-note svg{ width:16px; height:16px; flex:0 0 auto; margin-top:2px; color:var(--warning); }
+
+/* ============================================================
+   6. HOW IT WORKS
+   ============================================================ */
+.section{ padding:100px 0; position:relative; }
+.section-head{ text-align:center; max-width:600px; margin:0 auto 56px; }
+.section-tag{
+  font-size:13px; font-weight:800; letter-spacing:.6px;
+  color:var(--violet); text-transform:uppercase; margin-bottom:12px;
+  display:block;
+}
+.section-head h2{ font-size:clamp(26px,3.6vw,38px); font-weight:900; margin:0 0 14px; letter-spacing:-.3px; }
+.section-head p{ color:var(--text-2); font-size:15.5px; line-height:1.8; font-weight:500; }
+
+.steps-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:22px;
+}
+.step-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:30px 26px;
+  transition:transform .25s var(--ease), border-color .25s var(--ease);
+  position:relative;
+}
+.step-card:hover{ transform:translateY(-4px); border-color:var(--border-strong); }
+.step-num{
+  font-size:13px; font-weight:900; color:var(--text-3);
+  margin-bottom:18px; letter-spacing:.5px;
+}
+.step-icon{
+  width:54px; height:54px;
+  border-radius:16px;
+  background:var(--grad-brand-soft);
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:20px;
+  color:var(--text-1);
+}
+.step-icon svg{ width:26px; height:26px; }
+.step-card h3{ font-size:18px; font-weight:800; margin:0 0 8px; }
+.step-card p{ font-size:14px; color:var(--text-2); line-height:1.8; margin:0; font-weight:500; }
+
+/* ============================================================
+   7. SUPPORTED PLATFORMS
+   ============================================================ */
+.platforms-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:22px;
+}
+.platform-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:34px 26px;
+  text-align:center;
+  transition:all .3s var(--ease);
+}
+.platform-card:hover{
+  transform:translateY(-6px);
+  border-color:var(--border-strong);
+  box-shadow:var(--shadow-2);
+}
+.platform-card .p-icon{
+  width:64px; height:64px;
+  margin:0 auto 18px;
+  border-radius:18px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--surface-2);
+}
+.platform-card .p-icon svg{ width:32px; height:32px; }
+.platform-card h3{ font-size:17px; font-weight:800; margin:0 0 8px; }
+.platform-card p{ font-size:13.5px; color:var(--text-3); font-weight:600; margin:0; }
+
+/* ============================================================
+   8. FOOTER
+   ============================================================ */
+footer{
+  border-top:1px solid var(--border);
+  padding:52px 0 30px;
+  position:relative;
+  z-index:1;
+}
+.footer-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  flex-wrap:wrap;
+  gap:28px;
+  margin-bottom:34px;
+}
+.footer-brand .brand{ margin-bottom:12px; }
+.footer-brand p{ color:var(--text-3); font-size:13.5px; max-width:280px; line-height:1.8; font-weight:500; margin:0; }
+.footer-links{ display:flex; gap:36px; flex-wrap:wrap; }
+.footer-links h5{ font-size:13px; color:var(--text-3); text-transform:uppercase; letter-spacing:.5px; margin:0 0 14px; font-weight:800; }
+.footer-links ul{ display:flex; flex-direction:column; gap:10px; }
+.footer-links a{ font-size:14px; color:var(--text-2); font-weight:600; transition:color .2s; }
+.footer-links a:hover{ color:var(--text-1); }
+.footer-bottom{
+  border-top:1px solid var(--border);
+  padding-top:22px;
+  text-align:center;
+  color:var(--text-3);
+  font-size:13px;
+  font-weight:600;
+}
+
+/* ============================================================
+   9. RESPONSIVE
+   ============================================================ */
+@media (max-width: 860px){
+  .steps-grid, .platforms-grid{ grid-template-columns:1fr; }
+  .video-card{ flex-direction:column; align-items:stretch; text-align:center; }
+  .video-thumb{ width:100%; height:150px; margin:0 auto; }
+  .video-meta h3{ white-space:normal; }
+}
+@media (max-width: 720px){
+  nav.main-nav{
+    position:fixed;
+    top:var(--header-h);
+    inset-inline:0;
+    background:var(--bg-1);
+    border-bottom:1px solid var(--border);
+    flex-direction:column;
+    align-items:stretch;
+    padding:10px 20px 18px;
+    gap:2px;
+    transform:translateY(-130%);
+    opacity:0;
+    transition:transform .3s var(--ease), opacity .3s var(--ease);
+  }
+  nav.main-nav.open{ transform:translateY(0); opacity:1; }
+  nav.main-nav a{ padding:13px 10px; border-radius:10px; }
+  .nav-toggle{
+    display:flex;
+    width:42px;height:42px;
+    align-items:center;justify-content:center;
+    border-radius:var(--radius-full);
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text-1);
+  }
+  .nav-toggle svg{ width:20px;height:20px; }
+  .lang-btn span.lang-text{ display:none; }
+  .download-card{ padding:20px; }
+  .paste-btn span{ display:none; }
+  .paste-btn{ padding:12px; }
+  .paste-btn svg{ width:18px; height:18px; }
+}
+@media (max-width: 480px){
+  .hero{ padding-top:calc(var(--header-h) + 50px); }
+  .platform-row{ gap:8px; }
+  .platform-chip{ padding:9px 13px; font-size:13px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     AMBIENT BACKGROUND
+     ============================================================ -->
+<div class="ambient" aria-hidden="true">
+  <span class="b1"></span>
+  <span class="b2"></span>
+  <span class="b3"></span>
+</div>
+
+<!-- ============================================================
+     TOASTS CONTAINER
+     ============================================================ -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="#top" class="brand">
+      <span class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v1a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span id="siteNameLabel">VideoDrop</span>
+    </a>
+
+    <button class="nav-toggle" id="navToggle" aria-label="فتح القائمة">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+
+    <nav class="main-nav" id="mainNav">
+      <a href="#top" data-i18n="nav_home">الرئيسية</a>
+      <a href="#how" data-i18n="nav_how">كيف يعمل؟</a>
+      <a href="#platforms" data-i18n="nav_platforms">المنصات المدعومة</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="icon-btn lang-btn" id="langToggle" title="Change language">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18Z"/></svg>
+        <span class="lang-text" id="langLabel">AR</span>
+      </button>
+      <button class="icon-btn" id="themeToggle" title="Toggle theme">
+        <svg id="themeIconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <!-- ============================================================
+       HERO
+       ============================================================ -->
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow"><span class="dot"></span> <span data-i18n="eyebrow">تنزيل سريع وآمن لفيديوهاتك</span></span>
+      <h1 class="hero-title" data-i18n="hero_title">حمّل <span class="grad">فيديوهاتك المفضلة</span> بسهولة</h1>
+      <p class="hero-sub" data-i18n="hero_sub">ألصق رابط الفيديو من YouTube أو Instagram أو TikTok واحصل على خيارات التنزيل المتاحة بسرعة.</p>
+
+      <div class="download-card">
+        <div class="input-row">
+          <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <input type="text" id="videoLink" data-i18n-ph="placeholder_link" placeholder="ألصق رابط الفيديو هنا…" autocomplete="off" spellcheck="false">
+          <button class="paste-btn" id="pasteBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-inline-end:5px"><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/></svg>
+            <span data-i18n="paste">لصق</span>
+          </button>
+        </div>
+
+        <button class="analyze-btn" id="analyzeBtn">
+          <span class="spinner"></span>
+          <span class="btn-label" data-i18n="analyze">تحليل الرابط</span>
+        </button>
+
+        <div class="inline-hint" id="inlineHint"></div>
+
+        <div class="platform-row" id="platformRow">
+          <div class="platform-chip" data-platform="youtube">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.5V8.5L15.8 12Z"/></svg>
+            <span>YouTube</span>
+          </div>
+          <div class="platform-chip" data-platform="instagram">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>
+            <span>Instagram</span>
+          </div>
+          <div class="platform-chip" data-platform="tiktok">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 2h-3.3v13.9a2.8 2.8 0 1 1-2-2.7v-3.4a6.2 6.2 0 1 0 5.3 6.1V9.1a7.6 7.6 0 0 0 4.4 1.4V7.2a4.3 4.3 0 0 1-4.4-4.2Z"/></svg>
+            <span>TikTok</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           RESULTS SECTION — populated dynamically by JS
+           ============================================================ -->
+      <div class="results" id="resultsSection"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       HOW IT WORKS
+       ============================================================ -->
+  <section class="section" id="how">
+    <div class="container">
+      <div class="section-head">
+        <span class="section-tag" data-i18n="how_tag">ثلاث خطوات فقط</span>
+        <h2 data-i18n="how_title">كيف يعمل الموقع؟</h2>
+        <p data-i18n="how_sub">عملية بسيطة وسريعة للحصول على الفيديو الذي تريده بالجودة المناسبة.</p>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <div class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <h3 data-i18n="step1_t">ألصق الرابط</h3>
+          <p data-i18n="step1_p">انسخ رابط الفيديو من التطبيق والصقه في الحقل المخصص.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <div class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="19" cy="17" r="2.4"/></svg>
+          </div>
+          <h3 data-i18n="step2_t">اختر الجودة</h3>
+          <p data-i18n="step2_p">قارن بين الجودات المتاحة واختر ما يناسب احتياجك.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <div class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v1a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-1"/></svg>
+          </div>
+          <h3 data-i18n="step3_t">احصل على الملف</h3>
+          <p data-i18n="step3_p">اضغط تنزيل واحفظ الفيديو مباشرة على جهازك.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SUPPORTED PLATFORMS
+       ============================================================ -->
+  <section class="section" id="platforms">
+    <div class="container">
+      <div class="section-head">
+        <span class="section-tag" data-i18n="platforms_tag">التوافق</span>
+        <h2 data-i18n="platforms_title">المنصات المدعومة</h2>
+        <p data-i18n="platforms_sub">يدعم الموقع أشهر منصات الفيديو المستخدمة يومياً.</p>
+      </div>
+      <div class="platforms-grid">
+        <div class="platform-card">
+          <div class="p-icon" style="color:#ff3b3b">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.5V8.5L15.8 12Z"/></svg>
+          </div>
+          <h3>YouTube</h3>
+          <p data-i18n="platform_yt">فيديوهات وShorts بجودات متعددة</p>
+        </div>
+        <div class="platform-card">
+          <div class="p-icon" style="color:#e1306c">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <h3>Instagram</h3>
+          <p data-i18n="platform_ig">ريلز ومنشورات وقصص</p>
+        </div>
+        <div class="platform-card">
+          <div class="p-icon" style="color:#25f4ee">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 2h-3.3v13.9a2.8 2.8 0 1 1-2-2.7v-3.4a6.2 6.2 0 1 0 5.3 6.1V9.1a7.6 7.6 0 0 0 4.4 1.4V7.2a4.3 4.3 0 0 1-4.4-4.2Z"/></svg>
+          </div>
+          <h3>TikTok</h3>
+          <p data-i18n="platform_tt">مقاطع بدون علامة مائية عند التوفر</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer>
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#top" class="brand">
+          <span class="logo-mark">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v1a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-1" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span id="siteNameLabelFooter">VideoDrop</span>
+        </a>
+        <p data-i18n="footer_desc">أداة سريعة وبسيطة لتحليل روابط الفيديو واختيار الجودة المناسبة للتنزيل.</p>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h5 data-i18n="footer_links_h">روابط</h5>
+          <ul>
+            <li><a href="#top" data-i18n="nav_home">الرئيسية</a></li>
+            <li><a href="#" data-i18n="privacy">سياسة الخصوصية</a></li>
+            <li><a href="#" data-i18n="terms">شروط الاستخدام</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span id="copyrightLine"></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================================
+   SITE CONFIGURATION — عدّل هذه القيم بسهولة
+   ============================================================================ */
+const SITE_NAME = "VideoDrop";
+
+// ⚠️ ضع هنا رابط الـ API الخاص بالخدمة الفعلية لتحليل الفيديوهات (Backend خاص بك).
+// هذا الموقع لا يحتوي على أي منطق تنزيل حقيقي، وهو مُجهّز بالكامل لربطه بأي API لاحقاً.
+const API_URL = ""; // مثال: "https://api.example.com/v1/analyze"
+
+/* ============================================================================
+   I18N — قاموس بسيط لدعم لغة إضافية لاحقاً (عربي / إنجليزي)
+   ============================================================================ */
+const I18N = {
+  ar: {
+    nav_home: "الرئيسية", nav_how: "كيف يعمل؟", nav_platforms: "المنصات المدعومة",
+    eyebrow: "تنزيل سريع وآمن لفيديوهاتك",
+    hero_sub: "ألصق رابط الفيديو من YouTube أو Instagram أو TikTok واحصل على خيارات التنزيل المتاحة بسرعة.",
+    placeholder_link: "ألصق رابط الفيديو هنا…",
+    paste: "لصق", analyze: "تحليل الرابط",
+    how_tag: "ثلاث خطوات فقط", how_title: "كيف يعمل الموقع؟",
+    how_sub: "عملية بسيطة وسريعة للحصول على الفيديو الذي تريده بالجودة المناسبة.",
+    step1_t: "ألصق الرابط", step1_p: "انسخ رابط الفيديو من التطبيق والصقه في الحقل المخصص.",
+    step2_t: "اختر الجودة", step2_p: "قارن بين الجودات المتاحة واختر ما يناسب احتياجك.",
+    step3_t: "احصل على الملف", step3_p: "اضغط تنزيل واحفظ الفيديو مباشرة على جهازك.",
+    platforms_tag: "التوافق", platforms_title: "المنصات المدعومة",
+    platforms_sub: "يدعم الموقع أشهر منصات الفيديو المستخدمة يومياً.",
+    platform_yt: "فيديوهات وShorts بجودات متعددة",
+    platform_ig: "ريلز ومنشورات وقصص",
+    platform_tt: "مقاطع بدون علامة مائية عند التوفر",
+    footer_desc: "أداة سريعة وبسيطة لتحليل روابط الفيديو واختيار الجودة المناسبة للتنزيل.",
+    footer_links_h: "روابط", privacy: "سياسة الخصوصية", terms: "شروط الاستخدام",
+    err_empty: "الرجاء إدخال رابط الفيديو أولاً.",
+    err_invalid: "هذا الرابط غير صحيح، تأكد من نسخه بشكل كامل.",
+    err_unsupported: "هذه المنصة غير مدعومة حالياً. المدعوم: YouTube، Instagram، TikTok.",
+    err_service: "حدث خطأ أثناء الاتصال بالخدمة، حاول مرة أخرى لاحقاً.",
+    success_analyzed: "تم تحليل الرابط بنجاح.",
+    pasted: "تم لصق الرابط.",
+    paste_failed: "تعذّر الوصول إلى الحافظة، الصق الرابط يدوياً.",
+    api_missing: "لم يتم ربط API بعد — هذه بيانات تجريبية للعرض فقط.",
+    results_note: "بيانات تجريبية للعرض فقط. اربط الموقع بخدمة API حقيقية لتفعيل التنزيل الفعلي.",
+    download_note: "زر التنزيل جاهز للربط مع API — لا يوجد تنزيل فعلي حالياً.",
+  },
+  en: {
+    nav_home: "Home", nav_how: "How it works", nav_platforms: "Supported platforms",
+    eyebrow: "Fast, safe video downloads",
+    hero_sub: "Paste a video link from YouTube, Instagram or TikTok and get available download options instantly.",
+    placeholder_link: "Paste the video link here…",
+    paste: "Paste", analyze: "Analyze link",
+    how_tag: "Just three steps", how_title: "How it works",
+    how_sub: "A simple, fast process to get the video you want at the right quality.",
+    step1_t: "Paste the link", step1_p: "Copy the video link from the app and paste it in the field.",
+    step2_t: "Choose quality", step2_p: "Compare available qualities and pick what suits you.",
+    step3_t: "Get the file", step3_p: "Press download and save the video to your device.",
+    platforms_tag: "Compatibility", platforms_title: "Supported platforms",
+    platforms_sub: "Supports the most popular video platforms used daily.",
+    platform_yt: "Videos and Shorts, multiple qualities",
+    platform_ig: "Reels, posts and stories",
+    platform_tt: "Clips without watermark when available",
+    footer_desc: "A fast, simple tool to analyze video links and choose the right download quality.",
+    footer_links_h: "Links", privacy: "Privacy policy", terms: "Terms of use",
+    err_empty: "Please enter a video link first.",
+    err_invalid: "This link looks invalid. Make sure it's copied in full.",
+    err_unsupported: "This platform isn't supported yet. Supported: YouTube, Instagram, TikTok.",
+    err_service: "A service error occurred, please try again later.",
+    success_analyzed: "Link analyzed successfully.",
+    pasted: "Link pasted.",
+    paste_failed: "Couldn't access clipboard, paste the link manually.",
+    api_missing: "No API connected yet — this is sample preview data.",
+    results_note: "Sample preview data only. Connect a real API to enable actual downloads.",
+    download_note: "Download button is wired for API integration — no real file yet.",
+  }
+};
+let currentLang = "ar";
+function t(key){ return I18N[currentLang][key] || key; }
+
+/* ============================================================================
+   ELEMENTS
+   ============================================================================ */
+const el = {
+  html: document.documentElement,
+  themeToggle: document.getElementById('themeToggle'),
+  langToggle: document.getElementById('langToggle'),
+  langLabel: document.getElementById('langLabel'),
+  navToggle: document.getElementById('navToggle'),
+  mainNav: document.getElementById('mainNav'),
+  input: document.getElementById('videoLink'),
+  pasteBtn: document.getElementById('pasteBtn'),
+  analyzeBtn: document.getElementById('analyzeBtn'),
+  inlineHint: document.getElementById('inlineHint'),
+  platformChips: document.querySelectorAll('.platform-chip'),
+  results: document.getElementById('resultsSection'),
+  toastWrap: document.getElementById('toastWrap'),
+  siteNameLabel: document.getElementById('siteNameLabel'),
+  siteNameLabelFooter: document.getElementById('siteNameLabelFooter'),
+  copyrightLine: document.getElementById('copyrightLine'),
+};
+
+el.siteNameLabel.textContent = SITE_NAME;
+el.siteNameLabelFooter.textContent = SITE_NAME;
+
+/* ============================================================================
+   THEME (dark default)
+   ============================================================================ */
+function applyTheme(theme){
+  el.html.setAttribute('data-theme', theme);
+  localStorage.setItem('vd_theme', theme);
+  el.themeToggle.innerHTML = theme === 'dark'
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2 12h2.2M19.8 12H22M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>';
+}
+const savedTheme = localStorage.getItem('vd_theme') || 'dark';
+applyTheme(savedTheme);
+el.themeToggle.addEventListener('click', () => {
+  const next = el.html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+});
+
+/* ============================================================================
+   LANGUAGE TOGGLE (AR ⇄ EN)
+   ============================================================================ */
+function applyLang(lang){
+  currentLang = lang;
+  el.html.setAttribute('lang', lang);
+  el.html.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+  el.langLabel.textContent = lang === 'ar' ? 'EN' : 'AR';
+  document.querySelectorAll('[data-i18n]').forEach(node => {
+    node.textContent = t(node.getAttribute('data-i18n'));
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(node => {
+    node.setAttribute('placeholder', t(node.getAttribute('data-i18n-ph')));
+  });
+  // hero title needs the highlighted span preserved
+  const heroTitle = document.querySelector('.hero-title');
+  heroTitle.innerHTML = lang === 'ar'
+    ? 'حمّل <span class="grad">فيديوهاتك المفضلة</span> بسهولة'
+    : 'Download your favorite <span class="grad">videos</span> easily';
+  localStorage.setItem('vd_lang', lang);
+}
+const savedLang = localStorage.getItem('vd_lang') || 'ar';
+applyLang(savedLang);
+el.langToggle.addEventListener('click', () => applyLang(currentLang === 'ar' ? 'en' : 'ar'));
+
+/* ============================================================================
+   MOBILE NAV
+   ============================================================================ */
+el.navToggle.addEventListener('click', () => el.mainNav.classList.toggle('open'));
+el.mainNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => el.mainNav.classList.remove('open')));
+
+/* ============================================================================
+   TOASTS
+   ============================================================================ */
+const TOAST_ICONS = {
+  success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>',
+};
+function showToast(message, type = 'success', duration = 4200){
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <span class="toast-icon">${TOAST_ICONS[type] || TOAST_ICONS.success}</span>
+    <span class="toast-text">${message}</span>
+    <button class="toast-close" aria-label="close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>`;
+  el.toastWrap.appendChild(toast);
+  const remove = () => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 200); };
+  toast.querySelector('.toast-close').addEventListener('click', remove);
+  setTimeout(remove, duration);
+}
+
+/* ============================================================================
+   PLATFORM DETECTION
+   ============================================================================ */
+const PLATFORM_PATTERNS = {
+  youtube: /(youtube\.com|youtu\.be)/i,
+  instagram: /instagram\.com/i,
+  tiktok: /tiktok\.com/i,
+};
+function detectPlatform(url){
+  for (const [name, pattern] of Object.entries(PLATFORM_PATTERNS)){
+    if (pattern.test(url)) return name;
+  }
+  return null;
+}
+function highlightPlatform(name){
+  el.platformChips.forEach(chip => {
+    const isActive = chip.dataset.platform === name;
+    chip.classList.toggle('active', isActive);
+    const existingPulse = chip.querySelector('.pulse');
+    if (isActive && !existingPulse){
+      const pulse = document.createElement('span');
+      pulse.className = 'pulse';
+      chip.appendChild(pulse);
+    } else if (!isActive && existingPulse){
+      existingPulse.remove();
+    }
+  });
+}
+
+/* ============================================================================
+   PASTE BUTTON
+   ============================================================================ */
+el.pasteBtn.addEventListener('click', async () => {
+  try{
+    const text = await navigator.clipboard.readText();
+    el.input.value = text;
+    showToast(t('pasted'), 'success', 2200);
+    const platform = detectPlatform(text);
+    highlightPlatform(platform);
+    setInlineHint('');
+  } catch(e){
+    showToast(t('paste_failed'), 'warning');
+  }
+});
+
+/* live platform detection while typing */
+el.input.addEventListener('input', () => {
+  const url = el.input.value.trim();
+  highlightPlatform(url ? detectPlatform(url) : null);
+  setInlineHint('');
+});
+
+function setInlineHint(message, isError = false){
+  el.inlineHint.textContent = message;
+  el.inlineHint.classList.toggle('error', isError);
+}
+
+/* ============================================================================
+   LINK VALIDATION
+   ============================================================================ */
+function isValidUrl(str){
+  try{
+    const u = new URL(str);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch(e){
+    return false;
+  }
+}
+
+/* ============================================================================
+   MOCK DATA — تُستخدم فقط لعرض شكل الواجهة النهائية
+   يجب استبدال هذا القسم بالكامل عند ربط API حقيقي
+   ============================================================================ */
+function buildMockResult(platform, url){
+  const platformLabels = { youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok' };
+  return {
+    title: currentLang === 'ar' ? 'عنوان الفيديو التجريبي — بيانات للعرض فقط' : 'Sample video title — preview data only',
+    author: currentLang === 'ar' ? 'اسم صاحب المحتوى' : 'Content author name',
+    platform: platformLabels[platform],
+    platformKey: platform,
+    duration: '03:24',
+    video: [
+      { label: '1080p', size: '84 MB' },
+      { label: '720p', size: '52 MB' },
+      { label: '480p', size: '31 MB' },
+      { label: '360p', size: '19 MB' },
+    ],
+    audio: [
+      { label: '320kbps', size: '7.8 MB' },
+      { label: '192kbps', size: '4.9 MB' },
+      { label: '128kbps', size: '3.2 MB' },
+    ],
+  };
+}
+
+/* ============================================================================
+   PLATFORM TAG ICON (small, for results header)
+   ============================================================================ */
+const PLATFORM_ICON_SVG = {
+  youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.5V8.5L15.8 12Z"/></svg>',
+  instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>',
+  tiktok: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 2h-3.3v13.9a2.8 2.8 0 1 1-2-2.7v-3.4a6.2 6.2 0 1 0 5.3 6.1V9.1a7.6 7.6 0 0 0 4.4 1.4V7.2a4.3 4.3 0 0 1-4.4-4.2Z"/></svg>',
+};
+
+/* ============================================================================
+   RENDER RESULTS UI
+   ============================================================================ */
+function renderResults(data){
+  const qualityRow = (item, type) => `
+    <div class="quality-item">
+      <div class="q-badge">${type}</div>
+      <div class="q-info">
+        <div class="q-res">${item.label}</div>
+        <div class="q-meta">${type} • ${item.size}</div>
+      </div>
+      <button class="dl-btn" data-quality="${item.label}" data-type="${type}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v1a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-1"/></svg>
+        <span data-i18n-dl>${currentLang === 'ar' ? 'تنزيل' : 'Download'}</span>
+      </button>
+    </div>`;
+
+  el.results.innerHTML = `
+    <div class="video-card">
+      <div class="video-thumb">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3Z" fill="currentColor" stroke="none"/></svg>
+        <span class="duration-badge">${data.duration}</span>
+      </div>
+      <div class="video-meta">
+        <h3>${data.title}</h3>
+        <div class="video-sub">
+          <span>${data.author}</span>
+          <span class="platform-tag">${PLATFORM_ICON_SVG[data.platformKey]} ${data.platform}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="quality-groups">
+      <div class="quality-group">
+        <h4>MP4</h4>
+        <div class="quality-list">${data.video.map(v => qualityRow(v, 'MP4')).join('')}</div>
+      </div>
+      <div class="quality-group">
+        <h4>MP3</h4>
+        <div class="quality-list">${data.audio.map(a => qualityRow(a, 'MP3')).join('')}</div>
+      </div>
+    </div>
+
+    <div class="results-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+      <span>${t('results_note')}</span>
+    </div>
+  `;
+  el.results.classList.add('visible');
+
+  el.results.querySelectorAll('.dl-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleDownloadClick(btn.dataset.quality, btn.dataset.type));
+  });
+
+  el.results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ============================================================================
+   DOWNLOAD BUTTON HANDLER
+   ⚠️ نقطة الربط مع API الحقيقي — استبدل الجسم بالكامل بطلب fetch فعلي
+   ============================================================================ */
+async function handleDownloadClick(quality, type){
+  if (!API_URL){
+    showToast(t('download_note'), 'warning');
+    return;
+  }
+  // مثال على الشكل المتوقع لاستدعاء API حقيقي:
+  //
+  // try {
+  //   const response = await fetch(API_URL + '/download', {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({ url: el.input.value.trim(), quality, type })
+  //   });
+  //   const data = await response.json();
+  //   window.location.href = data.downloadUrl; // أو تشغيل التنزيل حسب استجابة الـ API
+  // } catch (e) {
+  //   showToast(t('err_service'), 'error');
+  // }
+}
+
+/* ============================================================================
+   ANALYZE BUTTON HANDLER
+   ⚠️ نقطة الربط مع API الحقيقي لتحليل الرابط — استبدل جسم دالة runAnalysis
+   ============================================================================ */
+async function runAnalysis(url, platform){
+  if (!API_URL){
+    // لا يوجد API مرتبط بعد: نعرض بيانات تجريبية فقط لتوضيح شكل الواجهة النهائية.
+    await new Promise(res => setTimeout(res, 1200));
+    return { ok: true, data: buildMockResult(platform, url) };
+  }
+  // مثال على الشكل المتوقع لاستدعاء API حقيقي لتحليل الرابط:
+  //
+  // const response = await fetch(API_URL + '/analyze', {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ url, platform })
+  // });
+  // if (!response.ok) return { ok: false };
+  // const data = await response.json();
+  // return { ok: true, data };
+}
+
+el.analyzeBtn.addEventListener('click', async () => {
+  const url = el.input.value.trim();
+  setInlineHint('');
+
+  // الحالة 1: حقل فارغ
+  if (!url){
+    setInlineHint(t('err_empty'), true);
+    showToast(t('err_empty'), 'error');
+    return;
+  }
+
+  // الحالة 4: رابط غير صحيح
+  if (!isValidUrl(url)){
+    setInlineHint(t('err_invalid'), true);
+    showToast(t('err_invalid'), 'error');
+    return;
+  }
+
+  const platform = detectPlatform(url);
+
+  // الحالة 5: منصة غير مدعومة
+  if (!platform){
+    setInlineHint(t('err_unsupported'), true);
+    showToast(t('err_unsupported'), 'error');
+    return;
+  }
+
+  highlightPlatform(platform);
+
+  // الحالة 2: تحليل جارٍ
+  el.analyzeBtn.classList.add('loading');
+  el.analyzeBtn.disabled = true;
+  el.results.classList.remove('visible');
+
+  try{
+    const result = await runAnalysis(url, platform);
+
+    if (!result || !result.ok){
+      // الحالة 6: خطأ في الخدمة
+      showToast(t('err_service'), 'error');
+      return;
+    }
+
+    // الحالة 3: نجاح
+    renderResults(result.data);
+    showToast(API_URL ? t('success_analyzed') : `${t('success_analyzed')} ${t('api_missing')}`, 'success');
+
+  } catch(err){
+    showToast(t('err_service'), 'error');
+  } finally{
+    el.analyzeBtn.classList.remove('loading');
+    el.analyzeBtn.disabled = false;
+  }
+});
+
+el.input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') el.analyzeBtn.click();
+});
+
+/* ============================================================================
+   FOOTER COPYRIGHT — سنة تلقائية
+   ============================================================================ */
+el.copyrightLine.textContent = `© ${new Date().getFullYear()} ${SITE_NAME} — ${currentLang === 'ar' ? 'جميع الحقوق محفوظة' : 'All rights reserved'}`;
+</script>
+</body>
+</html>
