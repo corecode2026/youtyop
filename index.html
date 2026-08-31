@@ -810,10 +810,6 @@ footer{
         <div class="inline-hint" id="inlineHint"></div>
 
         <div class="platform-row" id="platformRow">
-          <div class="platform-chip" data-platform="youtube">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.5V8.5L15.8 12Z"/></svg>
-            <span>YouTube</span>
-          </div>
           <div class="platform-chip" data-platform="instagram">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>
             <span>Instagram</span>
@@ -883,13 +879,6 @@ footer{
       </div>
       <div class="platforms-grid">
         <div class="platform-card">
-          <div class="p-icon" style="color:#ff3b3b">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.5V8.5L15.8 12Z"/></svg>
-          </div>
-          <h3>YouTube</h3>
-          <p data-i18n="platform_yt">فيديوهات وShorts بجودات متعددة</p>
-        </div>
-        <div class="platform-card">
           <div class="p-icon" style="color:#e1306c">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>
           </div>
@@ -935,7 +924,7 @@ footer{
       </div>
     </div>
     <div class="footer-bottom">
-      <span id="copyrightLine"></span>
+      جميع الحقوق محفوظة لدى Core Code
     </div>
   </div>
 </footer>
@@ -1035,7 +1024,6 @@ const el = {
   toastWrap: document.getElementById('toastWrap'),
   siteNameLabel: document.getElementById('siteNameLabel'),
   siteNameLabelFooter: document.getElementById('siteNameLabelFooter'),
-  copyrightLine: document.getElementById('copyrightLine'),
 };
 
 el.siteNameLabel.textContent = SITE_NAME;
@@ -1116,7 +1104,6 @@ function showToast(message, type = 'success', duration = 4200){
    PLATFORM DETECTION
    ============================================================================ */
 const PLATFORM_PATTERNS = {
-  youtube: /(youtube\.com|youtu\.be)/i,
   instagram: /instagram\.com/i,
   tiktok: /tiktok\.com/i,
 };
@@ -1428,9 +1415,8 @@ el.input.addEventListener('keydown', (e) => {
 });
 
 /* ============================================================================
-   FOOTER COPYRIGHT — سنة تلقائية
+   FOOTER — النص ثابت (Core Code)
    ============================================================================ */
-el.copyrightLine.textContent = `© ${new Date().getFullYear()} ${SITE_NAME} — ${currentLang === 'ar' ? 'جميع الحقوق محفوظة' : 'All rights reserved'}`;
 </script>
 </body>
 </html>
